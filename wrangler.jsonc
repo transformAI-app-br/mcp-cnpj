@@ -1,0 +1,14 @@
+// MCP e API não oficiais do CNPJ, em transformai.app.br. Sem segredos nem bancos: lê as fatias publicadas
+// em huggingface.co/datasets/transformai/cnpj e guarda no cache do Cloudflare.
+{
+  "name": "transformai-mcp-cnpj",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-23",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "transformai.app.br/mcp/cnpj*", "zone_name": "transformai.app.br" },
+    { "pattern": "transformai.app.br/api/v1/cnpj*", "zone_name": "transformai.app.br" }
+  ],
+  "observability": { "enabled": true }
+}

@@ -1,0 +1,610 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "CNPJ (não oficial), por Transformaí",
+    "version": "0.1.0",
+    "summary": "Dados abertos do CNPJ da Receita Federal, com a procedência de cada resposta.",
+    "description": "Serviço não oficial, sem vínculo com a Receita Federal. Lê a base mensal tratada pela Transformaí e publicada em https://huggingface.co/datasets/transformai/cnpj (especificação TAI-BP-001). Sem dados de sócios, endereços ou contatos; CPF em razão social de titular único mascarado. As mesmas operações existem como ferramentas MCP em https://transformai.app.br/mcp/cnpj.",
+    "contact": {
+      "name": "Transformaí",
+      "url": "https://transformai.app.br/dados/"
+    },
+    "license": {
+      "name": "Apache-2.0 (código); dados CC BY 4.0, de origem da Receita Federal",
+      "identifier": "Apache-2.0"
+    }
+  },
+  "externalDocs": {
+    "description": "Especificação TAI-BP-001",
+    "url": "https://transformai.app.br/blueprints/mapa-cadeia-cnpj"
+  },
+  "servers": [
+    {
+      "url": "https://transformai.app.br/api/v1/cnpj"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Tabelas"
+    },
+    {
+      "name": "Consultas"
+    }
+  ],
+  "paths": {
+    "/cnaes": {
+      "get": {
+        "tags": [
+          "Tabelas"
+        ],
+        "operationId": "buscarCnae",
+        "summary": "Buscar atividade econômica (CNAE)",
+        "description": "Procura códigos CNAE pela descrição da atividade, na tabela publicada pela Receita.",
+        "parameters": [
+          {
+            "name": "texto",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "description": "Parte da descrição, como 'atacado de produtos siderúrgicos'."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Atividades encontradas",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/EntradaInvalida"
+          },
+          "502": {
+            "$ref": "#/components/responses/FonteIndisponivel"
+          }
+        }
+      }
+    },
+    "/contagem": {
+      "post": {
+        "tags": [
+          "Consultas"
+        ],
+        "operationId": "contarEstabelecimentos",
+        "summary": "Contar estabelecimentos",
+        "description": "Conta estabelecimentos por atividade (CNAE), UF, município e situação, com agrupamento opcional por município, atividade, porte ou ano de início. Porte e ano valem para a UF inteira e para a atividade principal. A resposta traz a procedência: publicação da Receita e arquivos de origem com SHA-256.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "uf": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z]{2}$",
+                    "description": "Sigla da UF, como MG."
+                  },
+                  "municipio_ibge": {
+                    "type": "string",
+                    "pattern": "^[0-9]{7}$",
+                    "description": "Código IBGE do município, 7 dígitos."
+                  },
+                  "cnae": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9]{7}$"
+                    },
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "description": "Códigos CNAE de 7 dígitos. Use buscar_cnae para achar os códigos."
+                  },
+                  "cnae_secundario": {
+                    "type": "boolean",
+                    "description": "Considerar também o CNAE secundário. Padrão: false."
+                  },
+                  "situacao": {
+                    "type": "string",
+                    "enum": [
+                      "ativa",
+                      "baixada",
+                      "suspensa",
+                      "inapta",
+                      "nula"
+                    ],
+                    "description": "Situação cadastral. Padrão: ativa."
+                  },
+                  "agrupar_por": {
+                    "type": "string",
+                    "enum": [
+                      "municipio",
+                      "cnae",
+                      "porte",
+                      "ano_inicio"
+                    ],
+                    "description": "Dimensão do agrupamento. Sem ela, retorna o total."
+                  },
+                  "versao": {
+                    "type": "string",
+                    "pattern": "^[0-9]{4}-[0-9]{2}(-amostra)?$",
+                    "description": "Publicação da Receita, AAAA-MM. Padrão: a mais recente processada."
+                  }
+                },
+                "required": [
+                  "uf",
+                  "cnae"
+                ],
+                "additionalProperties": false
+              },
+              "examples": {
+                "aco_mg": {
+                  "summary": "Atacado de produtos siderúrgicos em MG, por município",
+                  "value": {
+                    "uf": "MG",
+                    "cnae": [
+                      "4685100"
+                    ],
+                    "agrupar_por": "municipio"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contagem e procedência",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "versao": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "grupos": {
+                      "type": "array",
+                      "items": {
+                        "type": "object"
+                      }
+                    },
+                    "procedencia": {
+                      "$ref": "#/components/schemas/Procedencia"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/EntradaInvalida"
+          },
+          "502": {
+            "$ref": "#/components/responses/FonteIndisponivel"
+          }
+        }
+      }
+    },
+    "/estabelecimentos": {
+      "post": {
+        "tags": [
+          "Consultas"
+        ],
+        "operationId": "listarEstabelecimentos",
+        "summary": "Listar estabelecimentos",
+        "description": "Lista estabelecimentos ativos pela atividade principal, com os campos cadastrais públicos (CNPJ, razão social, nome fantasia, matriz ou filial, início, município e porte), em páginas de até 100, ordenados por município e razão social. CPF em razão social de titular único vem mascarado. Não inclui dados de sócios, endereços nem contatos.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "uf": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z]{2}$",
+                    "description": "Sigla da UF, como MG."
+                  },
+                  "municipio_ibge": {
+                    "type": "string",
+                    "pattern": "^[0-9]{7}$",
+                    "description": "Código IBGE do município, 7 dígitos."
+                  },
+                  "cnae": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9]{7}$"
+                    },
+                    "minItems": 1,
+                    "maxItems": 50,
+                    "description": "Códigos CNAE de 7 dígitos. Use buscar_cnae para achar os códigos."
+                  },
+                  "limite": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "description": "Padrão: 20."
+                  },
+                  "pagina": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Padrão: 1."
+                  },
+                  "versao": {
+                    "type": "string",
+                    "pattern": "^[0-9]{4}-[0-9]{2}(-amostra)?$",
+                    "description": "Publicação da Receita, AAAA-MM. Padrão: a mais recente processada."
+                  }
+                },
+                "required": [
+                  "uf",
+                  "cnae"
+                ],
+                "additionalProperties": false
+              },
+              "examples": {
+                "bh": {
+                  "summary": "Atacado de produtos siderúrgicos em Belo Horizonte",
+                  "value": {
+                    "uf": "MG",
+                    "cnae": [
+                      "4685100"
+                    ],
+                    "municipio_ibge": "3106200",
+                    "limite": 20
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Estabelecimentos e procedência",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "total": {
+                      "type": "integer"
+                    },
+                    "pagina": {
+                      "type": "integer"
+                    },
+                    "paginas": {
+                      "type": "integer"
+                    },
+                    "estabelecimentos": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Estabelecimento"
+                      }
+                    },
+                    "procedencia": {
+                      "$ref": "#/components/schemas/Procedencia"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/EntradaInvalida"
+          },
+          "502": {
+            "$ref": "#/components/responses/FonteIndisponivel"
+          }
+        }
+      }
+    },
+    "/{cnpj}": {
+      "get": {
+        "tags": [
+          "Consultas"
+        ],
+        "operationId": "consultarCnpj",
+        "summary": "Consultar um CNPJ",
+        "description": "Dados cadastrais públicos de um estabelecimento. Aceita o CNPJ numérico e o alfanumérico (em vigor desde julho de 2026), com ou sem pontuação.",
+        "parameters": [
+          {
+            "name": "cnpj",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "14 caracteres, com ou sem pontuação (use %2F no lugar da barra)"
+          },
+          {
+            "name": "versao",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}(-amostra)?$",
+              "description": "Publicação da Receita, AAAA-MM. Padrão: a mais recente processada."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Cadastro público",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "encontrado": {
+                      "type": "boolean"
+                    },
+                    "estabelecimento": {
+                      "$ref": "#/components/schemas/Estabelecimento"
+                    },
+                    "procedencia": {
+                      "$ref": "#/components/schemas/Procedencia"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/EntradaInvalida"
+          },
+          "502": {
+            "$ref": "#/components/responses/FonteIndisponivel"
+          }
+        }
+      }
+    },
+    "/procedencia": {
+      "get": {
+        "tags": [
+          "Tabelas"
+        ],
+        "operationId": "procedencia",
+        "summary": "Procedência dos dados",
+        "description": "Publicação da Receita usada, data do processamento, arquivos de origem com SHA-256 e link para a especificação do processamento.",
+        "parameters": [
+          {
+            "name": "versao",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{4}-[0-9]{2}(-amostra)?$",
+              "description": "Publicação da Receita, AAAA-MM. Padrão: a mais recente processada."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Procedência da versão",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/EntradaInvalida"
+          },
+          "502": {
+            "$ref": "#/components/responses/FonteIndisponivel"
+          }
+        }
+      }
+    },
+    "/openapi.json": {
+      "get": {
+        "tags": [
+          "Tabelas"
+        ],
+        "operationId": "openapi",
+        "summary": "Esta descrição",
+        "responses": {
+          "200": {
+            "description": "OpenAPI 3.1",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "responses": {
+      "EntradaInvalida": {
+        "description": "Parâmetro inválido",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Erro"
+            }
+          }
+        }
+      },
+      "FonteIndisponivel": {
+        "description": "Dados publicados indisponíveis",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Erro"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "Erro": {
+        "type": "object",
+        "required": [
+          "erro"
+        ],
+        "properties": {
+          "erro": {
+            "type": "string"
+          }
+        }
+      },
+      "Estabelecimento": {
+        "type": "object",
+        "properties": {
+          "cnpj": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "razao_social": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "nome_fantasia": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "matriz_filial": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "situacao": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "data_situacao": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inicio_atividade": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cnae_principal": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "municipio_ibge": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "municipio": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "uf": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "porte": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "natureza_juridica": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "cnae_secundarios": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "capital_social": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      },
+      "Procedencia": {
+        "type": "object",
+        "properties": {
+          "fonte": {
+            "type": "string"
+          },
+          "versao": {
+            "type": "string"
+          },
+          "processado_em": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "amostra": {
+            "type": "boolean"
+          },
+          "arquivos": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "arquivo": {
+                  "type": "string"
+                },
+                "bytes": {
+                  "type": "integer"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "conjunto_de_dados": {
+            "type": "string",
+            "format": "uri"
+          },
+          "especificacao": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      }
+    }
+  }
+}

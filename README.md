@@ -4,9 +4,11 @@ Servidor MCP para consultar os **dados abertos do CNPJ da Receita Federal** a pa
 
 > **Serviço não oficial.** Mantido pela [Transformaí](https://transformai.app.br/), sem vínculo com a Receita Federal. A fonte é a publicação mensal de dados abertos do CNPJ.
 >
-> **Rascunho.** O servidor ainda não está no ar. Ele depende do processamento mensal da base do CNPJ, que ainda está sendo montado. Por enquanto, este repositório publica a interface proposta (ferramentas e registro). O [MCP do Comex Stat](https://github.com/transformAI-app-br/mcp-comexstat), da mesma família, já está no ar.
+> **No ar, versão 0.1.0.** Os dados vêm do conjunto [transformai/cnpj](https://huggingface.co/datasets/transformai/cnpj) no Hugging Face, atualizado todo mês.
 
 - **Endereço:** `https://transformai.app.br/mcp/cnpj` (Streamable HTTP, sem autenticação)
+- **API REST:** `https://transformai.app.br/api/v1/cnpj`, descrita em [`openapi.json`](openapi.json)
+- **Base aberta:** [huggingface.co/datasets/transformai/cnpj](https://huggingface.co/datasets/transformai/cnpj), em Parquet por UF
 - **Registro oficial MCP:** `br.app.transformai/cnpj` (ver [`server.json`](server.json))
 - **Ferramentas:** [`ferramentas.json`](ferramentas.json)
 
@@ -26,13 +28,13 @@ claude mcp add --transport http cnpj https://transformai.app.br/mcp/cnpj
 
 Todas são só de leitura.
 
-| Ferramenta | Entrada | Retorno |
+| MCP | REST | O que faz |
 |---|---|---|
-| `buscar_cnae` | `texto` | códigos CNAE e descrições |
-| `contar_estabelecimentos` | `uf`, `cnae`, `municipio_ibge?`, `situacao?`, `agrupar_por?`, `versao?` | contagens, com procedência |
-| `listar_estabelecimentos` | `uf`, `cnae`, `municipio_ibge?`, `situacao?`, `limite?`, `pagina?`, `versao?` | campos cadastrais públicos, com procedência |
-| `consultar_cnpj` | `cnpj`, `versao?` | cadastro público do estabelecimento, com procedência |
-| `procedencia` | `versao?` | publicação, arquivos e SHA-256, data do processamento |
+| `buscar_cnae` | `GET /cnaes?texto=` | códigos de atividade pela descrição |
+| `contar_estabelecimentos` | `POST /contagem` | contagem por UF, atividade, município e situação; agrupa por município, atividade, porte ou ano de início |
+| `listar_estabelecimentos` | `POST /estabelecimentos` | ativos pela atividade principal, em páginas de até 100 |
+| `consultar_cnpj` | `GET /{cnpj}` | cadastro público de um estabelecimento, CNPJ numérico ou alfanumérico |
+| `procedencia` | `GET /procedencia` | publicação da Receita, arquivos com SHA-256 e municípios que não casaram com o IBGE |
 
 Toda resposta inclui o bloco `procedencia`:
 
@@ -59,7 +61,25 @@ Toda resposta inclui o bloco `procedencia`:
 
 ## Como funciona
 
-O servidor roda num Cloudflare Worker. A base processada fica em arquivos Parquet no Cloudflare R2, divididos por UF e atividade, e cada consulta lê só o pedaço de que precisa. O catálogo de versões e a procedência ficam no Cloudflare D1. Como o processamento é feito está descrito na especificação publicada em transformai.app.br.
+1. **Processamento mensal** (privado, GitHub Actions): baixa a publicação da Receita, confere o SHA-256 de cada arquivo, trata os dados com DuckDB e publica tudo no Hugging Face. A Receita recusa conexões vindas do GitHub, então o download passa por uma ponte no Cloudflare, na América do Sul. O processamento publica duas coisas:
+   - a base aberta em Parquet, uma pasta por UF;
+   - fatias pequenas e compactadas: contagens por UF e atividade, listas paginadas e blocos de consulta por CNPJ.
+2. **Servidor** (este repositório, Cloudflare Worker): a cada pergunta, lê só a fatia necessária no Hugging Face, por leitura parcial (HTTP Range), e guarda em cache. Cabe no plano gratuito do Cloudflare (10 ms de CPU por chamada).
+
+```
+src/index.js        rotas /mcp/cnpj e /api/v1/cnpj
+src/mcp.js          MCP sem estado sobre Streamable HTTP
+src/rest.js         API REST com as mesmas ferramentas
+src/ferramentas.js  as cinco ferramentas
+src/dados.js        leitura das fatias no Hugging Face, com cache
+ferramentas.json    definições das ferramentas (MCP e base do openapi.json)
+```
+
+```bash
+npm test             # testes sem rede
+npm run test:ao-vivo # testes contra os dados publicados
+npm run deploy
+```
 
 ## Registro oficial
 
