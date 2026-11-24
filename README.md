@@ -4,7 +4,7 @@ Servidor MCP para consultar os **dados abertos do CNPJ da Receita Federal** a pa
 
 > **Serviço não oficial.** Mantido pela [Transformaí](https://transformai.app.br/), sem vínculo com a Receita Federal. A fonte é a publicação mensal de dados abertos do CNPJ.
 >
-> **Rascunho.** O servidor ainda não está no ar. Este repositório publica, por enquanto, a interface proposta (ferramentas e registro).
+> **Rascunho.** O servidor ainda não está no ar. Ele depende do processamento mensal da base do CNPJ, que ainda está sendo montado. Por enquanto, este repositório publica a interface proposta (ferramentas e registro). O [MCP do Comex Stat](https://github.com/transformAI-app-br/mcp-comexstat), da mesma família, já está no ar.
 
 - **Endereço:** `https://transformai.app.br/mcp/cnpj` (Streamable HTTP, sem autenticação)
 - **Registro oficial MCP:** `br.app.transformai/cnpj` (ver [`server.json`](server.json))
@@ -69,4 +69,4 @@ O servidor roda num Cloudflare Worker. A base processada fica em arquivos Parque
 
 ## Licença
 
-A definir.
+Código sob [Apache-2.0](LICENSE). Os dados são da Receita Federal; cite a fonte.
