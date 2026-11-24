@@ -1,0 +1,17 @@
+{
+  "name": "br.app.transformai/cnpj",
+  "title": "CNPJ: dados abertos da Receita Federal, por Transformaí (não oficial)",
+  "description": "Consulta os dados abertos do CNPJ da Receita Federal: estabelecimentos por atividade, município e situação, com a procedência de cada resposta. Serviço não oficial.",
+  "version": "0.1.0",
+  "websiteUrl": "https://transformai.app.br/",
+  "repository": {
+    "url": "https://github.com/transformAI-app-br/mcp-cnpj",
+    "source": "github"
+  },
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://transformai.app.br/mcp/cnpj"
+    }
+  ]
+}
