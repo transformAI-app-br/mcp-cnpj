@@ -4,7 +4,7 @@ import { ErroFonte } from './erros.js';
 
 export const BASE = 'https://huggingface.co/datasets/transformai/cnpj/resolve/main/servir';
 export const CONJUNTO = 'https://huggingface.co/datasets/transformai/cnpj';
-const AGENTE = 'transformai-mcp-cnpj/0.1 (+https://transformai.app.br/dados/)';
+const AGENTE = 'transformai-mcp-cnpj/0.1 (+https://transformai.app.br/)';
 
 async function gunzip(buffer) {
   const fluxo = new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'));
