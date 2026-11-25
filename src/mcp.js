@@ -6,13 +6,14 @@ export const VERSOES = ['2025-11-25', '2025-06-18', '2025-03-26'];
 const SERVIDOR = {
   name: 'transformai-cnpj',
   title: 'CNPJ (não oficial), por Transformaí',
-  version: '0.1.0',
+  version: '0.2.0',
   websiteUrl: 'https://transformai.app.br/dados/',
 };
 const INSTRUCOES =
   'Dados abertos do CNPJ da Receita Federal, publicação mensal, tratados pela Transformaí (serviço não oficial). ' +
   'Use buscar_cnae para achar os códigos de atividade antes de contar ou listar. UF vai por sigla e município pelo código IBGE. ' +
-  'Sem dados de sócios, endereços ou contatos. Ao citar um número, cite também a procedência (publicação da Receita e data do processamento).';
+  'Sem dados de sócios, endereços ou contatos. Ao citar um número, cite também a procedência (publicação da Receita e data do processamento). ' +
+  'As respostas vêm resumidas por padrão (total, maiores grupos, procedência em uma linha); peça detalhe "completo" só quando o usuário quiser a lista inteira ou os arquivos de origem.';
 
 export const CORS = {
   'Access-Control-Allow-Origin': '*',
@@ -41,7 +42,7 @@ async function responder(msg, contexto) {
     case 'tools/call': {
       const { resultado, erro } = await executar(params?.name, params?.arguments, contexto);
       if (erro) return { content: [{ type: 'text', text: erro }], isError: true };
-      return { content: [{ type: 'text', text: JSON.stringify(resultado, null, 2) }], structuredContent: resultado };
+      return { content: [{ type: 'text', text: JSON.stringify(resultado) }], structuredContent: resultado };
     }
     default:
       throw Object.assign(new Error(`Método não suportado: ${method}`), { rpc: -32601, id });

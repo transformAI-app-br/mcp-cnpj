@@ -1,6 +1,6 @@
 # mcp-cnpj
 
-Servidor MCP para consultar os **dados abertos do CNPJ da Receita Federal** a partir de assistentes de IA: Claude, ChatGPT e outros clientes do Model Context Protocol. Cada resposta traz a procedência, com a publicação da Receita usada e os arquivos de origem e seus SHA-256, para que qualquer número possa ser refeito por terceiros.
+Servidor MCP para consultar os **dados abertos do CNPJ da Receita Federal** a partir de assistentes de IA: Claude, ChatGPT e outros clientes do Model Context Protocol. Cada resposta traz a procedência (publicação da Receita e data do processamento) e aponta para o registro completo, com os arquivos de origem e seus SHA-256, para que qualquer número possa ser refeito por terceiros.
 
 > **Serviço não oficial.** Mantido pela [Transformaí](https://transformai.app.br/), sem vínculo com a Receita Federal. A fonte é a publicação mensal de dados abertos do CNPJ.
 >
@@ -36,16 +36,30 @@ Todas são só de leitura.
 | `consultar_cnpj` | `GET /{cnpj}` | cadastro público de um estabelecimento, CNPJ numérico ou alfanumérico |
 | `procedencia` | `GET /procedencia` | publicação da Receita, arquivos com SHA-256 e municípios que não casaram com o IBGE |
 
-Toda resposta inclui o bloco `procedencia`:
+### Respostas resumidas por padrão
+
+As respostas seguem descoberta progressiva, para não encher o contexto do assistente:
+
+- **Por padrão** (`detalhe: "resumo"`): o total, os 10 maiores grupos (ou quantos pedir em `limite`), o restante somado em `outros` e a procedência em uma linha.
+- **Quando o usuário pede tudo** (`detalhe: "completo"`): todos os grupos e a procedência com os arquivos de origem e seus SHA-256.
+
+O total é sempre o mesmo nos dois modos. Exemplo real: torrefadoras de café ativas em MG (CNAE 1081302), por município, publicação 2026-11. O resumo tem 1,3 KB; a resposta completa, com os 314 municípios, tem 25 KB.
 
 ```json
 {
+  "total": 1069,
+  "total_grupos": 314,
+  "grupos": [
+    { "municipio_ibge": "3170701", "municipio": "Varginha", "quantidade": 29 },
+    { "municipio_ibge": "3148103", "municipio": "Patrocínio", "quantidade": 28 },
+    "… 8 grupos"
+  ],
+  "outros": { "grupos": 304, "quantidade": 874 },
   "procedencia": {
     "fonte": "Receita Federal, dados abertos do CNPJ",
-    "versao": "AAAA-MM",
-    "processado_em": "AAAA-MM-DDThh:mm:ssZ",
-    "arquivos": [{ "arquivo": "Estabelecimentos", "sha256": "…" }],
-    "especificacao": "https://transformai.app.br/blueprints/mapa-cadeia-cnpj"
+    "versao": "2026-11",
+    "processado_em": "2026-11-25T00:21:20Z",
+    "registro_completo": "https://huggingface.co/datasets/transformai/cnpj/resolve/main/servir/2026-11/procedencia.json"
   }
 }
 ```
