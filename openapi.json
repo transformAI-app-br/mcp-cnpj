@@ -2,9 +2,9 @@
   "openapi": "3.1.0",
   "info": {
     "title": "CNPJ (não oficial), por Transformaí",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "summary": "Dados abertos do CNPJ da Receita Federal, com a procedência de cada resposta.",
-    "description": "Serviço não oficial, sem vínculo com a Receita Federal. Lê a base mensal tratada pela Transformaí e publicada em https://huggingface.co/datasets/transformai/cnpj (especificação TAI-BP-001). Sem dados de sócios, endereços ou contatos; CPF em razão social de titular único mascarado. As mesmas operações existem como ferramentas MCP em https://transformai.app.br/mcp/cnpj.",
+    "description": "Serviço não oficial, sem vínculo com a Receita Federal. As respostas vêm resumidas por padrão (os maiores grupos e a procedência em uma linha); use detalhe=completo para tudo. Lê a base mensal tratada pela Transformaí e publicada em https://huggingface.co/datasets/transformai/cnpj (especificação TAI-BP-001). Sem dados de sócios, endereços ou contatos; CPF em razão social de titular único mascarado. As mesmas operações existem como ferramentas MCP em https://transformai.app.br/mcp/cnpj.",
     "contact": {
       "name": "Transformaí",
       "url": "https://transformai.app.br/dados/"
@@ -39,7 +39,7 @@
         ],
         "operationId": "buscarCnae",
         "summary": "Buscar atividade econômica (CNAE)",
-        "description": "Procura códigos CNAE pela descrição da atividade, na tabela publicada pela Receita.",
+        "description": "Procura códigos CNAE pela descrição da atividade, na tabela publicada pela Receita. Por padrão mostra até 10 resultados e o total encontrado.",
         "parameters": [
           {
             "name": "texto",
@@ -50,6 +50,20 @@
               "minLength": 3,
               "description": "Parte da descrição, como 'atacado de produtos siderúrgicos'."
             }
+          },
+          {
+            "name": "detalhe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "resumo",
+                "completo"
+              ],
+              "description": "resumo (padrão): o essencial, com os maiores itens e a procedência em uma linha. completo: todos os itens e a procedência com os arquivos de origem e SHA-256. Use completo só quando o usuário pedir a lista inteira ou a origem detalhada."
+            },
+            "description": "resumo (padrão): o essencial, com os maiores itens e a procedência em uma linha. completo: todos os itens e a procedência com os arquivos de origem e SHA-256. Use completo só quando o usuário pedir a lista inteira ou a origem detalhada."
           }
         ],
         "responses": {
@@ -79,7 +93,7 @@
         ],
         "operationId": "contarEstabelecimentos",
         "summary": "Contar estabelecimentos",
-        "description": "Conta estabelecimentos por atividade (CNAE), UF, município e situação, com agrupamento opcional por município, atividade, porte ou ano de início. Porte e ano valem para a UF inteira e para a atividade principal. A resposta traz a procedência: publicação da Receita e arquivos de origem com SHA-256.",
+        "description": "Conta estabelecimentos por atividade (CNAE), UF, município e situação, com agrupamento opcional por município, atividade, porte ou ano de início. Porte e ano valem para a UF inteira e para a atividade principal. Por padrão responde resumido: o total, os 10 maiores grupos e o restante somado em \"outros\", com a procedência (publicação da Receita e data do processamento).",
         "requestBody": {
           "required": true,
           "content": {
@@ -132,6 +146,20 @@
                     ],
                     "description": "Dimensão do agrupamento. Sem ela, retorna o total."
                   },
+                  "limite": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000,
+                    "description": "No resumo, quantos grupos mostrar, dos maiores para os menores. Padrão: 10."
+                  },
+                  "detalhe": {
+                    "type": "string",
+                    "enum": [
+                      "resumo",
+                      "completo"
+                    ],
+                    "description": "resumo (padrão): o essencial, com os maiores itens e a procedência em uma linha. completo: todos os itens e a procedência com os arquivos de origem e SHA-256. Use completo só quando o usuário pedir a lista inteira ou a origem detalhada."
+                  },
                   "versao": {
                     "type": "string",
                     "pattern": "^[0-9]{4}-[0-9]{2}(-amostra)?$",
@@ -161,7 +189,7 @@
         },
         "responses": {
           "200": {
-            "description": "Contagem e procedência",
+            "description": "Contagem e procedência; no resumo, os maiores grupos e o restante em outros",
             "content": {
               "application/json": {
                 "schema": {
@@ -173,10 +201,24 @@
                     "total": {
                       "type": "integer"
                     },
+                    "total_grupos": {
+                      "type": "integer"
+                    },
                     "grupos": {
                       "type": "array",
                       "items": {
                         "type": "object"
+                      }
+                    },
+                    "outros": {
+                      "type": "object",
+                      "properties": {
+                        "grupos": {
+                          "type": "integer"
+                        },
+                        "quantidade": {
+                          "type": "integer"
+                        }
                       }
                     },
                     "procedencia": {
@@ -235,12 +277,20 @@
                     "type": "integer",
                     "minimum": 1,
                     "maximum": 100,
-                    "description": "Padrão: 20."
+                    "description": "Padrão: 10."
                   },
                   "pagina": {
                     "type": "integer",
                     "minimum": 1,
                     "description": "Padrão: 1."
+                  },
+                  "detalhe": {
+                    "type": "string",
+                    "enum": [
+                      "resumo",
+                      "completo"
+                    ],
+                    "description": "resumo (padrão): o essencial, com os maiores itens e a procedência em uma linha. completo: todos os itens e a procedência com os arquivos de origem e SHA-256. Use completo só quando o usuário pedir a lista inteira ou a origem detalhada."
                   },
                   "versao": {
                     "type": "string",
@@ -329,6 +379,20 @@
             "description": "14 caracteres, com ou sem pontuação (use %2F no lugar da barra)"
           },
           {
+            "name": "detalhe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "resumo",
+                "completo"
+              ],
+              "description": "resumo (padrão): o essencial, com os maiores itens e a procedência em uma linha. completo: todos os itens e a procedência com os arquivos de origem e SHA-256. Use completo só quando o usuário pedir a lista inteira ou a origem detalhada."
+            },
+            "description": "resumo (padrão): o essencial, com os maiores itens e a procedência em uma linha. completo: todos os itens e a procedência com os arquivos de origem e SHA-256. Use completo só quando o usuário pedir a lista inteira ou a origem detalhada."
+          },
+          {
             "name": "versao",
             "in": "query",
             "required": false,
@@ -377,8 +441,22 @@
         ],
         "operationId": "procedencia",
         "summary": "Procedência dos dados",
-        "description": "Publicação da Receita usada, data do processamento, arquivos de origem com SHA-256 e link para a especificação do processamento.",
+        "description": "Origem dos dados: publicação da Receita, data do processamento, contagens e link para a especificação. Com detalhe \"completo\", traz os arquivos de origem com SHA-256 e os municípios sem correspondência no IBGE.",
         "parameters": [
+          {
+            "name": "detalhe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "resumo",
+                "completo"
+              ],
+              "description": "resumo (padrão): o essencial, com os maiores itens e a procedência em uma linha. completo: todos os itens e a procedência com os arquivos de origem e SHA-256. Use completo só quando o usuário pedir a lista inteira ou a origem detalhada."
+            },
+            "description": "resumo (padrão): o essencial, com os maiores itens e a procedência em uma linha. completo: todos os itens e a procedência com os arquivos de origem e SHA-256. Use completo só quando o usuário pedir a lista inteira ou a origem detalhada."
+          },
           {
             "name": "versao",
             "in": "query",
@@ -594,6 +672,11 @@
                 }
               }
             }
+          },
+          "registro_completo": {
+            "type": "string",
+            "format": "uri",
+            "description": "No resumo: onde está o registro completo"
           },
           "conjunto_de_dados": {
             "type": "string",

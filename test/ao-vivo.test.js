@@ -20,7 +20,9 @@ let cnaeTeste = null;
 let cnpjTeste = null;
 
 test('procedência da versão publicada', async () => {
-  const p = await chamar('procedencia', {});
+  const resumo = await chamar('procedencia', {});
+  assert.ok(resumo.arquivos.quantidade > 0 && resumo.registro_completo.endsWith('/procedencia.json'));
+  const p = await chamar('procedencia', { detalhe: 'completo' });
   console.log('versão', p.versao, '| amostra', p.amostra, '| estabelecimentos', p.estabelecimentos, '| sem par IBGE', p.municipios_sem_correspondencia_ibge?.length);
   assert.ok(p.arquivos.length > 0 && p.arquivos.every((a) => /^[0-9a-f]{64}$/.test(a.sha256)));
 });

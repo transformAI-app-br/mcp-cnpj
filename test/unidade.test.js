@@ -108,6 +108,31 @@ test('consultar_cnpj: com pontuação, alfanumérico, inexistente e inválido', 
   assert.equal((await chamar(app, 'consultar_cnpj', { cnpj: '12345' })).isError, true);
 });
 
+test('descoberta progressiva: resumo por padrão, completo quando pedido', async () => {
+  const app = criarApp({ leitor: leitorFalso() });
+  const resumo = (await chamar(app, 'contar_estabelecimentos', { uf: 'MG', cnae: ['4685100', '4672900'], agrupar_por: 'municipio', limite: 1 })).structuredContent;
+  assert.equal(resumo.total, 193, 'o total não muda com o resumo');
+  assert.equal(resumo.total_grupos, 2);
+  assert.deepEqual(resumo.grupos, [{ municipio_ibge: '3106200', municipio: 'Belo Horizonte', quantidade: 190 }]);
+  assert.deepEqual(resumo.outros, { grupos: 1, quantidade: 3 });
+  assert.match(resumo.aviso, /completo/);
+  assert.equal(resumo.procedencia.arquivos, undefined, 'procedência em uma linha');
+  assert.match(resumo.procedencia.registro_completo, /servir\/2026-11\/procedencia\.json$/);
+  const tudo = (await chamar(app, 'contar_estabelecimentos', { uf: 'MG', cnae: ['4685100', '4672900'], agrupar_por: 'municipio', limite: 1, detalhe: 'completo' })).structuredContent;
+  assert.equal(tudo.grupos.length, 2);
+  assert.equal(tudo.outros, undefined);
+  assert.equal(tudo.procedencia.arquivos[0].sha256, 'abc');
+  const p = (await chamar(app, 'procedencia', {})).structuredContent;
+  assert.deepEqual(p.arquivos, { quantidade: 1, bytes: 1 });
+  assert.equal((await chamar(app, 'procedencia', { detalhe: 'completo' })).structuredContent.arquivos[0].arquivo, 'Estabelecimentos0.zip');
+  const um = (await chamar(app, 'consultar_cnpj', { cnpj: '12345678000195' })).structuredContent;
+  assert.equal(um.procedencia.arquivos, undefined);
+  const lista = (await chamar(app, 'listar_estabelecimentos', { uf: 'MG', cnae: ['4685100'] })).structuredContent;
+  assert.equal(lista.estabelecimentos.length, 10, 'página padrão de 10');
+  const rest = await app.fetch(new Request('https://transformai.app.br/api/v1/cnpj/procedencia?detalhe=completo'));
+  assert.equal((await rest.json()).arquivos[0].sha256, 'abc');
+});
+
 test('REST: rotas, CNPJ no caminho e OpenAPI', async () => {
   const app = criarApp({ leitor: leitorFalso() });
   const c = await app.fetch(new Request('https://transformai.app.br/api/v1/cnpj/contagem', { method: 'POST', body: JSON.stringify({ uf: 'MG', cnae: ['4685100'] }) }));

@@ -1,6 +1,6 @@
 // As cinco ferramentas do MCP de CNPJ, sobre as fatias publicadas no Hugging Face.
 import definicoes from '../ferramentas.json' with { type: 'json' };
-import { CONJUNTO } from './dados.js';
+import { BASE, CONJUNTO } from './dados.js';
 import { ErroEntrada, ErroFonte } from './erros.js';
 import { validar } from './validacao.js';
 
@@ -8,28 +8,29 @@ export { definicoes };
 
 const SITUACOES = ['nula', 'ativa', 'suspensa', 'inapta', 'baixada'];
 const ESPECIFICACAO = 'https://transformai.app.br/blueprints/mapa-cadeia-cnpj';
+// Descoberta progressiva: por padrão a resposta traz o essencial; detalhe "completo" traz tudo.
+const LIMITE_RESUMO = 10;
+const completo = (args) => args.detalhe === 'completo';
+const AVISO_RESUMO = 'Para todos e para a procedência com os arquivos de origem, peça detalhe "completo".';
 const semAcento = (t) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 async function versaoDe(args, leitor) {
   return args.versao ?? (await leitor.versaoAtual());
 }
 
-async function procedenciaResumo(leitor, versao) {
+// Resumo: fonte, publicação, data do processamento e onde está o registro completo.
+// Completo: também os arquivos de origem com SHA-256.
+async function procedenciaDe(leitor, versao, args) {
   const p = await leitor.procedencia(versao);
   if (!p) throw new ErroEntrada(`Versão não encontrada: ${versao}.`);
-  return {
-    fonte: p.fonte,
-    versao: p.versao,
-    processado_em: p.processado_em,
-    amostra: p.amostra,
-    arquivos: p.arquivos,
-    conjunto_de_dados: CONJUNTO,
-    especificacao: ESPECIFICACAO,
-  };
+  const base = { fonte: p.fonte, versao: p.versao, processado_em: p.processado_em, ...(p.amostra ? { amostra: true } : {}) };
+  if (!completo(args)) return { ...base, registro_completo: `${BASE}/${versao}/procedencia.json` };
+  return { ...base, amostra: Boolean(p.amostra), arquivos: p.arquivos, conjunto_de_dados: CONJUNTO, especificacao: ESPECIFICACAO };
 }
 
 const executores = {
-  async buscar_cnae({ texto }, { leitor }) {
+  async buscar_cnae(args, { leitor }) {
+    const { texto } = args;
     const versao = await leitor.versaoAtual();
     const cnaes = (await leitor.cnaes(versao)) ?? [];
     const alvo = semAcento(texto).replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
@@ -39,7 +40,13 @@ const executores = {
       const d = semAcento(c.descricao);
       return alvo.every((p) => d.includes(p));
     });
-    return { cnaes: achados.slice(0, 30).map((c) => ({ cnae: c.codigo, descricao: c.descricao })), total: achados.length, fonte: 'Receita Federal, tabela de CNAEs da publicação do CNPJ' };
+    const limite = completo(args) ? 100 : LIMITE_RESUMO;
+    return {
+      cnaes: achados.slice(0, limite).map((c) => ({ cnae: c.codigo, descricao: c.descricao })),
+      total: achados.length,
+      ...(achados.length > limite && !completo(args) ? { aviso: `Mostrando ${limite} de ${achados.length}. Refine o texto ou peça detalhe "completo".` } : {}),
+      fonte: 'Receita Federal, tabela de CNAEs da publicação do CNPJ',
+    };
   },
 
   async contar_estabelecimentos(args, { leitor }) {
@@ -83,18 +90,29 @@ const executores = {
     const total = [...grupos.values()].reduce((a, b) => a + b, 0);
     const observacoes = [];
     if (args.cnae_secundario && args.cnae.length > 1) observacoes.push('Com atividade secundária e várias atividades, um estabelecimento pode ser contado em mais de uma delas.');
+    let agrupamento = {};
+    if (agrupar) {
+      const n = completo(args) ? lista.length : (args.limite ?? LIMITE_RESUMO);
+      const resto = lista.slice(n);
+      agrupamento = {
+        agrupado_por: agrupar,
+        total_grupos: lista.length,
+        grupos: lista.slice(0, n),
+        ...(resto.length ? { outros: { grupos: resto.length, quantidade: resto.reduce((a, g) => a + g.quantidade, 0) }, aviso: `Mostrando os ${n} maiores grupos; os outros ${resto.length} estão somados em "outros". ${AVISO_RESUMO}` } : {}),
+      };
+    }
     return {
       versao, uf, situacao, total,
-      ...(agrupar ? { agrupado_por: agrupar, grupos: lista } : {}),
+      ...agrupamento,
       observacoes,
-      procedencia: await procedenciaResumo(leitor, versao),
+      procedencia: await procedenciaDe(leitor, versao, args),
     };
   },
 
   async listar_estabelecimentos(args, { leitor }) {
     const versao = await versaoDe(args, leitor);
     const uf = args.uf.toUpperCase();
-    const limite = args.limite ?? 20;
+    const limite = args.limite ?? LIMITE_RESUMO;
     const pagina = args.pagina ?? 1;
     const indice = await leitor.indiceLista(versao, uf);
     if (!indice) throw new ErroEntrada(`UF sem dados nesta versão: ${uf}.`);
@@ -132,7 +150,7 @@ const executores = {
         cnpj, razao_social, nome_fantasia, matriz_filial, inicio_atividade, municipio_ibge, municipio: nomes[municipio_ibge]?.[0] ?? null, porte,
       })),
       observacoes: ['Só estabelecimentos ativos, pela atividade principal. Sem dados de sócios, endereços ou contatos.'],
-      procedencia: await procedenciaResumo(leitor, versao),
+      procedencia: await procedenciaDe(leitor, versao, args),
     };
   },
 
@@ -143,7 +161,7 @@ const executores = {
     const indice = await leitor.indiceCnpj(versao, cnpj.slice(0, 3));
     const faixa = indice?.[cnpj.slice(0, 6)];
     const registro = faixa ? (await leitor.blocoCnpj(versao, cnpj.slice(0, 3), faixa))[cnpj] : undefined;
-    const procedencia = await procedenciaResumo(leitor, versao);
+    const procedencia = await procedenciaDe(leitor, versao, args);
     if (!registro) return { versao, cnpj, encontrado: false, procedencia };
     const nomes = (await leitor.municipios(versao)) ?? {};
     return { versao, cnpj, encontrado: true, estabelecimento: { cnpj, ...registro, municipio: nomes[registro.municipio_ibge]?.[0] ?? null }, procedencia };
@@ -153,7 +171,23 @@ const executores = {
     const versao = await versaoDe(args, leitor);
     const p = await leitor.procedencia(versao);
     if (!p) throw new ErroEntrada(`Versão não encontrada: ${versao}.`);
-    return { ...p, conjunto_de_dados: CONJUNTO };
+    if (completo(args)) return { ...p, conjunto_de_dados: CONJUNTO };
+    const soma = (lista) => lista?.length ?? 0;
+    return {
+      fonte: p.fonte,
+      endereco_fonte: p.endereco_fonte,
+      versao: p.versao,
+      processado_em: p.processado_em,
+      ...(p.amostra ? { amostra: true } : {}),
+      estabelecimentos: p.estabelecimentos,
+      por_situacao: p.por_situacao,
+      arquivos: { quantidade: soma(p.arquivos), bytes: (p.arquivos ?? []).reduce((a, f) => a + f.bytes, 0) },
+      municipios_sem_correspondencia_ibge: soma(p.municipios_sem_correspondencia_ibge),
+      municipios_casados_por_semelhanca: soma(p.municipios_casados_por_semelhanca),
+      registro_completo: `${BASE}/${versao}/procedencia.json`,
+      especificacao: ESPECIFICACAO,
+      aviso: 'Resumo. Para a lista de arquivos com SHA-256 e os municípios, peça detalhe "completo".',
+    };
   },
 };
 

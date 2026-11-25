@@ -4,9 +4,10 @@ import { executar } from './ferramentas.js';
 import { CORS } from './mcp.js';
 
 const BASE = '/api/v1/cnpj';
+const detalheDe = (url) => url.searchParams.get('detalhe') ?? undefined;
 const ROTAS = {
-  'GET /cnaes': ['buscar_cnae', (url) => ({ texto: url.searchParams.get('texto') ?? undefined })],
-  'GET /procedencia': ['procedencia', (url) => ({ versao: url.searchParams.get('versao') ?? undefined })],
+  'GET /cnaes': ['buscar_cnae', (url) => ({ texto: url.searchParams.get('texto') ?? undefined, detalhe: detalheDe(url) })],
+  'GET /procedencia': ['procedencia', (url) => ({ versao: url.searchParams.get('versao') ?? undefined, detalhe: detalheDe(url) })],
   'POST /contagem': ['contar_estabelecimentos', null],
   'POST /estabelecimentos': ['listar_estabelecimentos', null],
 };
@@ -24,7 +25,7 @@ export async function tratarRest(req, contexto) {
 
   // GET /{cnpj}: consulta de um CNPJ (com ou sem pontuação)
   const cnpj = req.method === 'GET' && /^\/[0-9A-Za-z./-]{14,18}$/.test(sub) && !['/estabelecimentos', '/contagem', '/cnaes', '/procedencia', '/openapi.json'].includes(sub) ? decodeURIComponent(sub.slice(1)) : null;
-  const rota = cnpj ? ['consultar_cnpj', () => ({ cnpj, versao: url.searchParams.get('versao') ?? undefined })] : ROTAS[`${req.method} ${sub}`];
+  const rota = cnpj ? ['consultar_cnpj', () => ({ cnpj, versao: url.searchParams.get('versao') ?? undefined, detalhe: detalheDe(url) })] : ROTAS[`${req.method} ${sub}`];
   if (!rota) return json({ erro: 'Rota não encontrada. Veja /api/v1/cnpj/openapi.json.' }, 404);
   const [ferramenta, deUrl] = rota;
 
