@@ -5,12 +5,12 @@ import { definicoes, executar } from './ferramentas.js';
 export const VERSOES = ['2025-11-25', '2025-06-18', '2025-03-26'];
 const SERVIDOR = {
   name: 'transformai-cnpj',
-  title: 'CNPJ (não oficial), por Transformaí',
+  title: 'cnpj @ transformAI.app.br',
   version: '0.2.0',
   websiteUrl: 'https://transformai.app.br/dados/',
 };
 const INSTRUCOES =
-  'Dados abertos do CNPJ da Receita Federal, publicação mensal, tratados pela Transformaí (serviço não oficial). ' +
+  'Dados abertos do CNPJ da Receita Federal, publicação mensal, tratados pela transformAI. ' +
   'Use buscar_cnae para achar os códigos de atividade antes de contar ou listar. UF vai por sigla e município pelo código IBGE. ' +
   'Sem dados de sócios, endereços ou contatos. Ao citar um número, cite também a procedência (publicação da Receita e data do processamento). ' +
   'As respostas vêm resumidas por padrão (total, maiores grupos, procedência em uma linha); peça detalhe "completo" só quando o usuário quiser a lista inteira ou os arquivos de origem.';
@@ -53,7 +53,7 @@ export async function tratarMcp(req, contexto) {
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (req.method === 'GET') {
     // Navegador: leva para a documentação. Cliente MCP pedindo stream: não há stream neste servidor.
-    if ((req.headers.get('Accept') ?? '').includes('text/html')) return Response.redirect('https://transformai.app.br/dados/#cnpj', 302);
+    if ((req.headers.get('Accept') ?? '').includes('text/html')) return Response.redirect('https://transformai.app.br/mcp/#cnpj', 302);
     return new Response('Este servidor MCP não abre stream; use POST.', { status: 405, headers: { Allow: 'POST, OPTIONS', ...CORS } });
   }
   if (req.method !== 'POST') return new Response('Método não permitido', { status: 405, headers: { Allow: 'POST, OPTIONS', ...CORS } });

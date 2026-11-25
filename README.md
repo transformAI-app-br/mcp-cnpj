@@ -2,7 +2,7 @@
 
 Servidor MCP para consultar os **dados abertos do CNPJ da Receita Federal** a partir de assistentes de IA: Claude, ChatGPT e outros clientes do Model Context Protocol. Cada resposta traz a procedência (publicação da Receita e data do processamento) e aponta para o registro completo, com os arquivos de origem e seus SHA-256, para que qualquer número possa ser refeito por terceiros.
 
-> **Serviço não oficial.** Mantido pela [Transformaí](https://transformai.app.br/), sem vínculo com a Receita Federal. A fonte é a publicação mensal de dados abertos do CNPJ.
+> `cnpj @ transformAI.app.br`, mantido pela [transformAI](https://transformai.app.br/), sem vínculo com a Receita Federal. A fonte é a publicação mensal de dados abertos do CNPJ.
 >
 > **No ar, versão 0.1.0.** Os dados vêm do conjunto [transformai/cnpj](https://huggingface.co/datasets/transformai/cnpj) no Hugging Face, atualizado todo mês.
 

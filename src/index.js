@@ -1,4 +1,4 @@
-// Worker do MCP e da API do CNPJ (não oficial), por Transformaí.
+// Worker do MCP e da API do CNPJ: cnpj @ transformAI.app.br.
 //   /mcp/cnpj          servidor MCP (Streamable HTTP, sem estado)
 //   /api/v1/cnpj/...   API REST com as mesmas ferramentas (OpenAPI em /api/v1/cnpj/openapi.json)
 // Dados: huggingface.co/datasets/transformai/cnpj (pasta servir/), lidos por partes e guardados em cache.

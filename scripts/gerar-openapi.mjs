@@ -11,11 +11,11 @@ const detalhe = { name: 'detalhe', in: 'query', required: false, schema: f.proce
 const spec = {
   openapi: '3.1.0',
   info: {
-    title: 'CNPJ (não oficial), por Transformaí',
+    title: 'cnpj @ transformAI.app.br',
     version: '0.2.0',
     summary: 'Dados abertos do CNPJ da Receita Federal, com a procedência de cada resposta.',
-    description: 'Serviço não oficial, sem vínculo com a Receita Federal. As respostas vêm resumidas por padrão (os maiores grupos e a procedência em uma linha); use detalhe=completo para tudo. Lê a base mensal tratada pela Transformaí e publicada em https://huggingface.co/datasets/transformai/cnpj (especificação TAI-BP-001). Sem dados de sócios, endereços ou contatos; CPF em razão social de titular único mascarado. As mesmas operações existem como ferramentas MCP em https://transformai.app.br/mcp/cnpj.',
-    contact: { name: 'Transformaí', url: 'https://transformai.app.br/dados/' },
+    description: 'As respostas vêm resumidas por padrão (os maiores grupos e a procedência em uma linha); use detalhe=completo para tudo. Lê a base mensal tratada pela transformAI e publicada em https://huggingface.co/datasets/transformai/cnpj (especificação TAI-BP-001). Sem dados de sócios, endereços ou contatos; CPF em razão social de titular único mascarado. As mesmas operações existem como ferramentas MCP em https://transformai.app.br/mcp/cnpj. A fonte é a Receita Federal, sem vínculo com a transformAI.',
+    contact: { name: 'transformAI', url: 'https://transformai.app.br/dados/' },
     license: { name: 'Apache-2.0 (código); dados CC BY 4.0, de origem da Receita Federal', identifier: 'Apache-2.0' },
   },
   externalDocs: { description: 'Especificação TAI-BP-001', url: 'https://transformai.app.br/blueprints/mapa-cadeia-cnpj' },
